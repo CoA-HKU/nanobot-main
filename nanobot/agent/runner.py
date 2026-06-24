@@ -113,6 +113,12 @@ class AgentRunSpec:
     goal_active_predicate: Callable[[], bool] | None = None
     goal_continue_message: GoalContinueMessage | None = None
     finalize_on_max_iterations: bool = True
+    # Guard config: if specified, these tool names must return non-empty results
+    # or the runner will refuse to answer. Use this to ensure knowledge retrieval
+    # tools don't allow the model to answer from its own knowledge when no
+    # approved fragments are found.
+    required_retrieval_tools: list[str] | None = None
+    no_knowledge_response: str | None = "現有資料無法回答"
 
 
 @dataclass(slots=True)
@@ -458,6 +464,46 @@ class AgentRunner:
                 context.tool_events = list(new_events)
                 completed_tool_results: list[dict[str, Any]] = []
                 for tool_call, result in zip(response.tool_calls, results):
+                    # Guard: if specified, certain retrieval tools must return
+                    # non-empty results. If they return no approved fragments,
+                    # immediately finalize the turn with a no-knowledge response
+                    # to avoid the model answering from its own knowledge.
+                    if spec.required_retrieval_tools and tool_call.name in spec.required_retrieval_tools:
+                        no_result = False
+                        if result is None:
+                            no_result = True
+                        elif isinstance(result, list) and len(result) == 0:
+                            no_result = True
+                        elif isinstance(result, dict) and not result:
+                            no_result = True
+                        if no_result:
+                            final_content = spec.no_knowledge_response or "現有資料無法回答"
+                            stop_reason = "no_approved_knowledge"
+                            error = final_content
+                            self._append_final_message(messages, final_content)
+                            context.final_content = final_content
+                            context.error = error
+                            context.stop_reason = stop_reason
+                            await hook.after_iteration(context)
+                            should_continue, injection_cycles = await self._try_drain_injections(
+                                spec, messages, None, injection_cycles,
+                                phase="after no knowledge",
+                            )
+                            if should_continue:
+                                had_injections = True
+                                # If injections were provided, continue the main loop
+                                continue
+                            # Otherwise return early with the current state
+                            return AgentRunResult(
+                                final_content=final_content,
+                                messages=messages,
+                                tools_used=tools_used,
+                                usage=usage,
+                                stop_reason=stop_reason,
+                                error=error,
+                                tool_events=tool_events,
+                                had_injections=had_injections,
+                            )
                     tool_message = {
                         "role": "tool",
                         "tool_call_id": tool_call.id,
