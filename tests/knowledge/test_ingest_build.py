@@ -3,16 +3,21 @@ import subprocess
 from pathlib import Path
 import json
 
+# Determine repository root in a CI- and local-friendly way.
+# Prefer GITHUB_WORKSPACE (set in GitHub Actions), otherwise walk upwards
+# until we find a repo marker (scripts/, .git, pyproject.toml). Fall back
+# to the original heuristic if nothing is found.
 if os.environ.get("GITHUB_WORKSPACE"):
     REPO_ROOT = Path(os.environ["GITHUB_WORKSPACE"])
 else:
     p = Path(__file__).resolve().parent
+    REPO_ROOT = None
     while p != p.parent:
         if (p / "scripts").exists() or (p / ".git").exists() or (p / "pyproject.toml").exists():
             REPO_ROOT = p
             break
         p = p.parent
-    else:
+    if REPO_ROOT is None:
         REPO_ROOT = Path(__file__).resolve().parents[2]
 
 KB_SOURCES = REPO_ROOT / "knowledge" / "sources"
