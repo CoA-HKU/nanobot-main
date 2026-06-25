@@ -15,8 +15,17 @@ def test_ingest_and_build_index(tmp_path):
     sample.write_text("<html><body><h1>睡眠建議</h1><p>規律作息。</p></body></html>", encoding="utf8")
 
     # run ingest script
-    res = subprocess.run(["python", "scripts/ingest.py", "--source", str(sample)], cwd=REPO_ROOT)
-    assert res.returncode == 0
+    res = subprocess.run(
+        ["python", "scripts/ingest.py", "--source", str(sample)],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 0, (
+        f"ingest.py failed with returncode {res.returncode}\n"
+        f"stdout:\n{res.stdout}\n"
+        f"stderr:\n{res.stderr}\n"
+    )
 
     # verify normalized fragment exists
     norm_dir = NORMALIZED / "sample_test_page"
@@ -27,8 +36,17 @@ def test_ingest_and_build_index(tmp_path):
     assert "睡眠建議" in content or "sample_test_page.html" in content
 
     # run build_index
-    res2 = subprocess.run(["python", "scripts/build_index.py"], cwd=REPO_ROOT)
-    assert res2.returncode == 0
+    res2 = subprocess.run(
+        ["python", "scripts/build_index.py"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert res2.returncode == 0, (
+        f"build_index.py failed with returncode {res2.returncode}\n"
+        f"stdout:\n{res2.stdout}\n"
+        f"stderr:\n{res2.stderr}\n"
+    )
 
     # index file exists and contains our sample entry
     assert INDEX.exists()
