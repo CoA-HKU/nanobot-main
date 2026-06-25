@@ -1,8 +1,9 @@
+import os
 import subprocess
 from pathlib import Path
 import json
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(os.environ.get("GITHUB_WORKSPACE", Path(__file__).resolve().parents[2]))
 KB_SOURCES = REPO_ROOT / "knowledge" / "sources"
 NORMALIZED = REPO_ROOT / "knowledge" / "normalized"
 INDEX = REPO_ROOT / "knowledge" / "index" / "index.json"
