@@ -86,6 +86,38 @@ class KnowledgeRetrievalTool:
                     "text_preview": e.get("text_preview"),
                 }
             )
+
+        # If token-overlap on previews produced no results, fall back to
+        # searching the full fragment files referenced by the index. This
+        # ensures tests that search for words present in titles (but not in
+        # the text_preview) succeed in CI where regeneration of previews may
+        # not have been run.
+        if not results and index:
+            q = query.strip().lower()
+            fallback = []
+            for entry in index:
+                p = entry.get("path")
+                if not p:
+                    continue
+                full = KB_ROOT / Path(p)
+                try:
+                    text = full.read_text(encoding="utf8")
+                except Exception:
+                    # ignore missing/unreadable files and continue
+                    continue
+                if q in text.lower():
+                    fallback.append({
+                        "id": entry.get("id"),
+                        "path": entry.get("path"),
+                        "source": entry.get("source"),
+                        "score": 1,
+                        "text_preview": entry.get("text_preview"),
+                    })
+                    if len(fallback) >= top_k:
+                        break
+            if fallback:
+                return fallback
+
         return results
 
     def get_fragment_text(self, path: str) -> str | None:
