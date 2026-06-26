@@ -25,7 +25,7 @@ def search_mci(query: str) -> str:
             continue
     
     if results:
-        return "\n\n".join(results[:3])
+        return "\n\n".join(results[:1])
     else:
         return "I don't have information about that in my MCI knowledge base."
 
