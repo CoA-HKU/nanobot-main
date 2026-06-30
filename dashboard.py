@@ -4,6 +4,37 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
+# Try to import RAG search tools if available
+try:
+    from knowledge_tool import TOOLS, search_resources, search_medication, search_cognitive, search_psychological
+    RAG_AVAILABLE = True
+except Exception:
+    TOOLS = []
+    RAG_AVAILABLE = False
+
+# Helper: find knowledge directory
+def find_knowledge_dir() -> Path:
+    # 1) explicit environment override
+    env = os.environ.get("NANOBOT_KNOWLEDGE_DIR")
+    if env:
+        p = Path(env)
+        if p.exists():
+            return p
+
+    # 2) repo-local knowledge (assumes this file lives in repo root)
+    try:
+        repo_root = Path(__file__).resolve().parent
+        repo_k = repo_root / "knowledge"
+        if repo_k.exists():
+            return repo_k
+    except Exception:
+        pass
+
+    # 3) legacy userprofile path used previously
+    up = os.environ.get("USERPROFILE") or os.path.expanduser("~")
+    p = Path(up) / ".nanobot" / "knowledge"
+    return p
+
 # Set page config
 st.set_page_config(
     page_title="小安 - 照顧者儀表板",
@@ -18,11 +49,13 @@ st.caption(f"最後更新：{datetime.now().strftime('%Y-%m-%d %H:%M')}")
 # --- Sidebar ---
 st.sidebar.header("👤 患者選擇")
 
-# Load patient profiles from knowledge folder
-knowledge_dir = Path(os.environ.get("USERPROFILE", ".")) / ".nanobot" / "knowledge"
+# Determine knowledge dir
+knowledge_dir = find_knowledge_dir()
 
-# List available patient files (if they exist)
-patient_files = list(knowledge_dir.glob("patient_*.txt"))
+# Load patient profiles from knowledge folder
+patient_files = []
+if knowledge_dir and knowledge_dir.exists():
+    patient_files = list(knowledge_dir.glob("patient_*.txt"))
 
 if patient_files:
     patient_names = [f.stem.replace("patient_", "") for f in patient_files]
@@ -31,6 +64,36 @@ else:
     # Create a demo patient if no real data exists
     st.sidebar.info("未找到患者檔案，使用示範數據")
     selected_patient = "陳婆婆"
+
+# RAG tools sidebar
+st.sidebar.markdown("---")
+st.sidebar.header("🔎 多源檢索 (RAG)")
+if RAG_AVAILABLE:
+    rag_names = [t["name"] for t in TOOLS]
+    selected_rag = st.sidebar.selectbox("選擇檢索工具", rag_names)
+    query = st.sidebar.text_input("查詢內容", value="記憶訓練")
+    if st.sidebar.button("執行檢索"):
+        # map name -> function
+        func_map = {
+            "search_resources": search_resources,
+            "search_medication": search_medication,
+            "search_cognitive": search_cognitive,
+            "search_psychological": search_psychological,
+        }
+        fn = func_map.get(selected_rag)
+        if fn:
+            with st.spinner("搜尋中…"):
+                try:
+                    res = fn(query)
+                    st.sidebar.success("檢索完成")
+                    st.markdown("### 🔎 檢索結果")
+                    st.text(res)
+                except Exception as e:
+                    st.sidebar.error(f"檢索工具執行失敗: {e}")
+        else:
+            st.sidebar.error("所選檢索工具未實作")
+else:
+    st.sidebar.info("未偵測到本地 RAG 工具 (knowledge_tool.py)。請確認檔案存在或設定 NANOBOT_KNOWLEDGE_DIR。")
 
 # --- Main Content ---
 col1, col2, col3 = st.columns(3)
