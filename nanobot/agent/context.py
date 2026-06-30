@@ -3,6 +3,7 @@
 import base64
 import mimetypes
 import platform
+import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -135,7 +136,7 @@ class ContextBuilder:
         system = platform.system()
         runtime = f"{'macOS' if system == 'Darwin' else system} {platform.machine()}, Python {platform.python_version()}"
 
-        return render_template(
+        identity = render_template(
             "agent/identity.md",
             workspace_path=workspace_path,
             runtime=runtime,
@@ -143,6 +144,50 @@ class ContextBuilder:
             channel=channel or "",
             bot_name=self.bot_name,
         )
+
+        # Sanitize the rendered identity to ensure it contains informational
+        # identity fields only (no behavioral instructions or hardcoded directives).
+        return self._sanitize_identity(identity)
+
+    def _sanitize_identity(self, text: str) -> str:
+        """Remove behavioral or instructional lines from the identity string.
+
+        This keeps the identity informational (name, role, allowed/platform policy)
+        while stripping lines that look like instructions ("You are ...", "Act,...",
+        "Reply directly...", etc.). The patterns are intentionally conservative to
+        avoid removing legitimate descriptive lines.
+        """
+        if not text:
+            return text
+
+        banned_patterns = [
+            r"^\s*You are\b",
+            r"Act,? don'?t narrate",
+            r"Execution Rules",
+            r"^\s*Reply\b",
+            r"^\s*Do not\b",
+            r"^\s*When you need to\b",
+            r"^\s*Use the\b",
+            r"^\s*Call the\b",
+        ]
+        patterns = [re.compile(p, re.IGNORECASE) for p in banned_patterns]
+
+        lines = text.splitlines()
+        kept = [ln for ln in lines if not any(p.search(ln) for p in patterns)]
+
+        # Collapse consecutive blank lines and trim leading/trailing whitespace.
+        out_lines: list[str] = []
+        prev_blank = False
+        for ln in kept:
+            if ln.strip() == "":
+                if not prev_blank:
+                    out_lines.append("")
+                prev_blank = True
+            else:
+                out_lines.append(ln)
+                prev_blank = False
+
+        return "\n".join(out_lines).strip()
 
     @staticmethod
     def _build_runtime_context(
