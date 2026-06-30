@@ -164,11 +164,6 @@ class ContextBuilder:
             r"^\s*You are\b",
             r"Act,? don'?t narrate",
             r"Execution Rules",
-            r"^\s*Reply\b",
-            r"^\s*Do not\b",
-            r"^\s*When you need to\b",
-            r"^\s*Use the\b",
-            r"^\s*Call the\b",
         ]
         patterns = [re.compile(p, re.IGNORECASE) for p in banned_patterns]
 
