@@ -61,7 +61,19 @@ except ImportError:
     print("⚠️ Caregiver Memory not available.")
 
 # ============================================================
-# NEW: SEMANTIC SEARCH
+# IMPORT METRICS & INSIGHTS (NEW!)
+# ============================================================
+try:
+    from metrics import MetricsCollector  # type: ignore
+    from insights import InsightGenerator  # type: ignore
+    METRICS_AVAILABLE = True
+    print("✅ Metrics & Insights loaded!")
+except ImportError as e:
+    METRICS_AVAILABLE = False
+    print(f"⚠️ Metrics not available: {e}")
+
+# ============================================================
+# SEMANTIC SEARCH
 # ============================================================
 
 try:
@@ -160,6 +172,14 @@ if CAREGIVER_MEMORY_AVAILABLE:
 else:
     caregiver_memory = None
 
+# Initialize metrics collector
+if METRICS_AVAILABLE:
+    metrics_collector = MetricsCollector()
+    insight_generator = InsightGenerator()
+else:
+    metrics_collector = None
+    insight_generator = None
+
 # ============================================================
 # EXISTING: Search functions
 # ============================================================
@@ -240,7 +260,7 @@ def process_message(user_message: str) -> str:
     user_id = get_user_id()
     
     # ============================================================
-    # CAREGIVER COMMANDS (NEW!)
+    # CAREGIVER COMMANDS
     # ============================================================
     
     if caregiver_memory:
@@ -248,28 +268,42 @@ def process_message(user_message: str) -> str:
             name = user_message.replace("/setname", "").strip()
             if name:
                 caregiver_memory.set_memory(user_id, "name", name)
-                return f"✅ 已記住你的名字：{name}"
+                response = f"✅ 已記住你的名字：{name}"
+                
+                # Record interaction
+                if metrics_collector:
+                    metrics_collector.record_interaction(user_id, "caregiver_command", response)
+                return response
             return "請輸入名字，例如：/setname 陳婆婆"
         
         if user_message.startswith("/addroutine"):
             routine = user_message.replace("/addroutine", "").strip()
             if routine:
                 caregiver_memory.add_routine(user_id, routine)
-                return f"✅ 已記住日常安排：{routine}"
+                response = f"✅ 已記住日常安排：{routine}"
+                if metrics_collector:
+                    metrics_collector.record_interaction(user_id, "caregiver_command", response)
+                return response
             return "請輸入日常安排，例如：/addroutine 9:00 吃藥"
         
         if user_message.startswith("/addpref"):
             pref = user_message.replace("/addpref", "").strip()
             if pref:
                 caregiver_memory.add_preference(user_id, pref)
-                return f"✅ 已記住你的喜好：{pref}"
+                response = f"✅ 已記住你的喜好：{pref}"
+                if metrics_collector:
+                    metrics_collector.record_interaction(user_id, "caregiver_command", response)
+                return response
             return "請輸入喜好，例如：/addpref 喜歡聽粵曲"
         
         if user_message.startswith("/calm"):
             phrase = user_message.replace("/calm", "").strip()
             if phrase:
                 caregiver_memory.set_calming_phrase(user_id, phrase)
-                return f"✅ 已記住安撫語句：{phrase}"
+                response = f"✅ 已記住安撫語句：{phrase}"
+                if metrics_collector:
+                    metrics_collector.record_interaction(user_id, "caregiver_command", response)
+                return response
             return "請輸入安撫語句，例如：/calm 一切安好，慢慢來"
         
         if user_message.startswith("/profile"):
@@ -279,8 +313,13 @@ def process_message(user_message: str) -> str:
                 for key, value in profile.items():
                     if key != "last_updated":
                         response += f"  {key}: {value}\n"
+                if metrics_collector:
+                    metrics_collector.record_interaction(user_id, "caregiver_command", response)
                 return response
-            return "📋 暫時沒有個人檔案。你可以用以下指令設定：\n/setname 名字\n/addroutine 日常安排\n/addpref 喜好\n/calm 安撫語句"
+            response = "📋 暫時沒有個人檔案。你可以用以下指令設定：\n/setname 名字\n/addroutine 日常安排\n/addpref 喜好\n/calm 安撫語句"
+            if metrics_collector:
+                metrics_collector.record_interaction(user_id, "caregiver_command", response)
+            return response
     
     # ============================================================
     # Step 1: Detect intent
@@ -310,6 +349,8 @@ def process_message(user_message: str) -> str:
             found=False,
             fallback_reason="Safety escalation triggered"
         )
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, intent, response)
         return response
     
     # ============================================================
@@ -328,6 +369,8 @@ def process_message(user_message: str) -> str:
             found=False,
             fallback_reason="Medication/diagnosis question refused"
         )
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, intent, response)
         return response
     
     # ============================================================
@@ -345,6 +388,8 @@ def process_message(user_message: str) -> str:
             response=response,
             found=True
         )
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, intent, response)
         return response
     
     # ============================================================
@@ -360,6 +405,10 @@ def process_message(user_message: str) -> str:
 
 1分鐘後我會問你記不記得。準備好了嗎？"""
         
+        # Record activity participation
+        if metrics_collector:
+            metrics_collector.record_activity_participation(user_id, "memory_exercise", True)
+        
         debug_logger.log_interaction(
             user_message=user_message,
             intent=intent,
@@ -369,6 +418,8 @@ def process_message(user_message: str) -> str:
             response=response,
             found=True
         )
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, intent, response)
         return response
     
     # ============================================================
@@ -382,6 +433,17 @@ def process_message(user_message: str) -> str:
         if caregiver_memory:
             name = caregiver_memory.get_name(user_id) or "朋友"
             calming_phrase = caregiver_memory.get_calming_phrase(user_id)
+        
+        # Extract mood from message or use default
+        mood_score = 3  # Default neutral
+        if "開心" in user_message or "好" in user_message:
+            mood_score = 4
+        elif "唔開心" in user_message or "不好" in user_message or "難過" in user_message:
+            mood_score = 2
+        elif "很差" in user_message or "好差" in user_message:
+            mood_score = 1
+        elif "非常好" in user_message or "很好" in user_message:
+            mood_score = 5
         
         if calming_phrase:
             response = f"""💙 我明白你的感受，{name}。照顧好自己的情緒很重要。
@@ -403,6 +465,11 @@ def process_message(user_message: str) -> str:
 3. 如果持續感到難過，可以尋求專業心理輔導
 
 小安會一直在這裡陪伴你。"""
+        
+        # Record mood metric
+        if metrics_collector:
+            metrics_collector.record_mood(user_id, mood_score)
+            metrics_collector.record_interaction(user_id, intent, response)
         
         debug_logger.log_interaction(
             user_message=user_message,
@@ -440,6 +507,8 @@ def process_message(user_message: str) -> str:
             found=found,
             fallback_reason=fallback_reason
         )
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, intent, response)
         return response
     
     # ============================================================
@@ -475,6 +544,8 @@ def process_message(user_message: str) -> str:
             response=response,
             found=True
         )
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, intent, response)
         return response
     
     # ============================================================
@@ -492,6 +563,8 @@ def process_message(user_message: str) -> str:
         found=False,
         fallback_reason="Unknown intent"
     )
+    if metrics_collector:
+        metrics_collector.record_interaction(user_id, intent, response)
     return response
 
 
@@ -507,6 +580,7 @@ def test_knowledge_tool():
     print(f"📁 Components available: {COMPONENTS_AVAILABLE}")
     print(f"📁 Semantic search available: {SEMANTIC_AVAILABLE}")
     print(f"📁 Caregiver memory available: {CAREGIVER_MEMORY_AVAILABLE}")
+    print(f"📁 Metrics available: {METRICS_AVAILABLE}")
     print("-" * 70)
     
     test_messages = [
