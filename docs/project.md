@@ -1,29 +1,7 @@
 # 小安 (Xiao An) — MCI Chatbot Project
 
-| **Project Information** | |
-|------------------------|---|
-| **Project Name** | 小安 (Xiao An) |
-| **Version** | 0.3.0 |
-| **Last Updated** | 2026-07-08 |
-| **Status** | Active Development |
-| **Target Users** | Chinese older adults with MCI/early dementia, caregivers |
-| **Primary Platform** | Telegram |
-| **Secondary Platforms** | WeChat, WebUI |
-| **Framework** | Nanobot (HKUDS) |
-| **LLM Provider** | DeepSeek V4 Flash |
-| **RAG Backend** | Custom Hybrid RAG (Semantic + Keyword) |
-
----
-
-## Executive Summary
-
-小安 (Xiao An) is a **source-grounded, caregiver-aware engagement companion** designed for Chinese older adults with Mild Cognitive Impairment (MCI) or early dementia. Unlike generic chatbots, 小安:
-
-- ✅ **Provides trustworthy dementia information** from curated sources (HA, JCCPA, WHO, etc.)
-- ✅ **Offers gentle engagement** through check-ins, memory exercises, and reminiscence prompts
-- ✅ **Respects safety boundaries** by refusing diagnosis, medication advice, and treatment decisions
-- ✅ **Supports caregivers** with authorable personalization (routines, reminders, preferences)
-- ✅ **Speaks Traditional Chinese** (with future support for Cantonese)
+cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main 
+.\start_all.cmd
 
 ### Key Achievements
 
@@ -86,45 +64,7 @@
 | **Evidence Sufficiency** | Check if chunks support the answer | ✅ |
 
 
----
 
-## Data Flow
-
-```
-1. User Message (Telegram/WeChat/WebUI)
-    ↓
-2. Intent Recognition (YOUR WORK)
-    - Classifies into 8 intents
-    - Priority: Safety > Medication > Knowledge > Others
-    ↓
-3. Safety & Medical Boundary (YOUR WORK)
-    - Medication questions → Refusal with doctor/caregiver guidance
-    - Diagnosis questions → Refusal with guidance
-    - Health complaints → Escalation with caregiver/emergency guidance
-    - Emergency → Escalate to caregiver or emergency services
-    ↓
-4. Module Routing (YOUR WORK)
-    - Knowledge QA → Hybrid RAG (TEAMMATE'S WORK)
-    - Reminder → Scheduler (YOUR WORK)
-    - Activity → Activity Generator (YOUR WORK)
-    - Emotional → Support Response (YOUR WORK)
-    - Personal Memory → Memory Store (YOUR WORK)
-    - Unknown → Graceful Fallback (YOUR WORK)
-    ↓
-5. RAG Pipeline (TEAMMATE'S WORK)
-    - Hybrid Search: Semantic + Keyword (BM25)
-    - Chroma DB vector retrieval
-    - Evidence sufficiency check (YOUR WORK)
-    - Response generation
-    ↓
-6. Debug Logging (YOUR WORK)
-    - Log: intent, chunks, sources, safety level, response
-    - JSON + text logs
-    ↓
-7. Response to User (YOUR WORK)
-    - Traditional Chinese
-    - 3-6 sentences
-    - Source display
 ```
 
 ---
@@ -224,26 +164,6 @@
 
 ---
 
-## Commands
-
-```powershell
-# Start bot
-cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
-.\start_bot.cmd
-
-# Start RAG server (standalone)
-cd C:\Users\user\.nanobot
-py -3.14 rag_server.py
-
-# Test RAG via CLI
-py -3.14 rag_cli.py "什麼是腦退化症？"
-
-# Test knowledge_tool
-py -3.14 knowledge_tool.py
-
-# Launch dashboard
-py -3.14 -m streamlit run dashboard.py
-
 # View logs
 type C:\Users\user\.nanobot\logs\bot_debug.log
 ```
@@ -257,8 +177,5 @@ type C:\Users\user\.nanobot\logs\bot_debug.log
 | `/addpref 喜歡聽粵曲` | Adds preference |
 | `/calm 一切安好` | Adds calming phrase |
 | `/profile` | Shows all stored info |
-
-
-*Last Updated: 2026-07-08*
 
     
