@@ -1,30 +1,32 @@
-# knowledge_tool.py - Multi-RAG Knowledge Search with Safety & Intent Integration
+# knowledge_tool.py - Complete MCI Chatbot with All Features
 # Location: C:\Users\user\.nanobot\knowledge_tool.py
 
 import sys
 import os
+import re
 from pathlib import Path
 import numpy as np
 
 # ============================================================
-# FIX 1: Add .nanobot folder to Python path
+# Add .nanobot folder to Python path
 # ============================================================
 NANOBOT_DIR = Path.home() / ".nanobot"
 if str(NANOBOT_DIR) not in sys.path:
     sys.path.insert(0, str(NANOBOT_DIR))
 
 # ============================================================
-# FIX 2: Import with error handling for Pylance
+# COMPONENT IMPORTS
 # ============================================================
+
+# 1. Core components
 try:
     from intent_recognizer import IntentRecognizer
     from safety_handler import SafetyHandler
     from debug_logger import DebugLogger
-    print("✅ Safety components imported successfully!")
+    print("✅ Core components imported successfully!")
     COMPONENTS_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ Import error: {e}")
-    print("Creating fallback components...")
     COMPONENTS_AVAILABLE = False
     
     class IntentRecognizer:
@@ -49,9 +51,7 @@ except ImportError as e:
         def get_recent_logs(self, n): 
             return []
 
-# ============================================================
-# IMPORT CAREGIVER MEMORY
-# ============================================================
+# 2. Caregiver Memory
 try:
     from caregiver_memory import CaregiverMemory
     CAREGIVER_MEMORY_AVAILABLE = True
@@ -60,20 +60,28 @@ except ImportError:
     CAREGIVER_MEMORY_AVAILABLE = False
     print("⚠️ Caregiver Memory not available.")
 
-# ============================================================
-# IMPORT METRICS & INSIGHTS (NEW!)
-# ============================================================
+# 3. User Profiles
 try:
-    from metrics import MetricsCollector  # type: ignore
-    from insights import InsightGenerator  # type: ignore
+    from user_profiles import USER_PROFILES, get_all_test_questions
+    USER_PROFILES_AVAILABLE = True
+    print("✅ User Profiles loaded!")
+except ImportError:
+    USER_PROFILES_AVAILABLE = False
+    USER_PROFILES = {}
+    print("⚠️ User Profiles not available.")
+
+# 4. Metrics & Insights
+try:
+    from metrics import MetricsCollector
+    from insights import InsightGenerator
     METRICS_AVAILABLE = True
     print("✅ Metrics & Insights loaded!")
-except ImportError as e:
+except ImportError:
     METRICS_AVAILABLE = False
-    print(f"⚠️ Metrics not available: {e}")
+    print("⚠️ Metrics not available.")
 
 # ============================================================
-# SEMANTIC SEARCH
+# SEMANTIC SEARCH (Hybrid RAG)
 # ============================================================
 
 try:
@@ -160,19 +168,17 @@ def hybrid_search(query: str) -> str:
     return '\n\n'.join(combined_results[:3]) if combined_results else ""
 
 # ============================================================
-# Initialize components
+# INITIALIZE COMPONENTS
 # ============================================================
 intent_recognizer = IntentRecognizer()
 safety_handler = SafetyHandler()
 debug_logger = DebugLogger()
 
-# Initialize caregiver memory
 if CAREGIVER_MEMORY_AVAILABLE:
     caregiver_memory = CaregiverMemory()
 else:
     caregiver_memory = None
 
-# Initialize metrics collector
 if METRICS_AVAILABLE:
     metrics_collector = MetricsCollector()
     insight_generator = InsightGenerator()
@@ -181,7 +187,7 @@ else:
     insight_generator = None
 
 # ============================================================
-# EXISTING: Search functions
+# SEARCH FUNCTIONS
 # ============================================================
 
 def search_keyword_fallback(query: str) -> str:
@@ -217,60 +223,215 @@ def search_psychological(query: str) -> str:
     result = hybrid_search(query)
     return result if result else "小安暫時沒有這個心理支援資訊。請聯絡專業人士。"
 
-# ============================================================
-# TOOLS list
-# ============================================================
-
 TOOLS = [
-    {
-        "name": "search_resources",
-        "description": "Search for center locations, contact info, transport, and opening hours",
-        "function": search_resources,
-    },
-    {
-        "name": "search_medication",
-        "description": "Search for medication information, side effects, dosage, and interactions",
-        "function": search_medication,
-    },
-    {
-        "name": "search_cognitive",
-        "description": "Search for cognitive training exercises and activity plans",
-        "function": search_cognitive,
-    },
-    {
-        "name": "search_psychological",
-        "description": "Search for psychological support, coping strategies, and anxiety management",
-        "function": search_psychological,
-    },
+    {"name": "search_resources", "description": "Search for center locations, contact info, transport, and opening hours", "function": search_resources},
+    {"name": "search_medication", "description": "Search for medication information, side effects, dosage, and interactions", "function": search_medication},
+    {"name": "search_cognitive", "description": "Search for cognitive training exercises and activity plans", "function": search_cognitive},
+    {"name": "search_psychological", "description": "Search for psychological support, coping strategies, and anxiety management", "function": search_psychological},
 ]
 
 # ============================================================
-# Main process_message function
+# USER PROFILE DETECTION
+# ============================================================
+
+def detect_user_profile(message):
+    """Detect which user profile matches the message"""
+    if not USER_PROFILES_AVAILABLE:
+        return None, None
+    for profile_id, profile in USER_PROFILES.items():
+        for keyword in profile.get("keywords", []):
+            if keyword in message:
+                return profile_id, profile
+    return None, None
+
+# ============================================================
+# DETECT FUNCTION (Pattern Detection)
+# ============================================================
+
+DETECT_KEYWORDS = {
+    "memory": ["忘記", "記性", "忘事", "記唔到", "memory", "忘", "記"],
+    "language": ["講唔到", "搵唔到字", "speech", "語言", "表達", "詞語"],
+    "orientation": ["迷路", "唔知時間", "lost", "confused", "混淆", "時間"],
+    "mood": ["擔心", "焦慮", "depressed", "憂鬱", "緊張", "不安", "驚"],
+}
+
+def detect_patterns(user_id, user_message):
+    """Detect patterns in user message and track them"""
+    detected = []
+    for category, keywords in DETECT_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in user_message:
+                detected.append(category)
+                break
+    
+    if caregiver_memory and detected:
+        pattern_counts = caregiver_memory.get_memory(user_id, "detected_patterns", {})
+        for category in detected:
+            pattern_counts[category] = pattern_counts.get(category, 0) + 1
+        caregiver_memory.set_memory(user_id, "detected_patterns", pattern_counts)
+        
+        total_patterns = sum(pattern_counts.values())
+        if total_patterns >= 3:
+            return f"""⚠️ 我留意到你多次提到一些值得關注的事情（共{total_patterns}次）。
+
+這不是診斷，但值得留意。
+
+💡 建議：
+1. 記錄你的觀察
+2. 與家人討論
+3. 考慮諮詢醫生
+
+需要我幫你準備見醫生的問題嗎？ (輸入 /doctor)"""
+    
+    return None
+
+# ============================================================
+# SCREENING QUESTIONS
+# ============================================================
+
+screening_sessions = {}
+
+def ask_screening_questions(user_id):
+    """Ask a series of screening questions"""
+    if user_id not in screening_sessions:
+        screening_sessions[user_id] = {"step": 0, "answers": []}
+    
+    session = screening_sessions[user_id]
+    step = session["step"]
+    
+    questions = [
+        ("今天星期幾？", "orientation"),
+        ("記住這3個詞語：蘋果、巴士、紅色。你記得哪幾個？", "memory"),
+        ("100減7等於多少？", "calculation"),
+        ("你記得剛才的3個詞語嗎？", "recall"),
+    ]
+    
+    if step >= len(questions):
+        score = sum(1 for a in session["answers"] if a)
+        result = "正常" if score >= 3 else "需要關注" if score >= 2 else "建議諮詢醫生"
+        
+        response = f"""📋 篩查結果（非診斷）：
+
+你答對了 {score}/{len(questions)} 題。
+
+📊 初步觀察：{result}
+
+⚠️ 這只是一個簡單的觀察，不是醫療診斷。
+💡 建議：{ "繼續觀察，如有持續擔憂可諮詢醫生" if score >= 3 else "建議與醫生討論你的情況" }
+
+🔍 你想要：
+/result → 查看詳細結果
+/doctor → 準備見醫生的問題
+/exit → 回到一般對話"""
+        
+        screening_sessions[user_id] = None
+        return response
+    
+    question = questions[step][0]
+    response = f"""🧠 問題 {step+1}/{len(questions)}：
+
+{question}
+
+請回答，或輸入 /skip 跳過"""
+    
+    session["current_question"] = questions[step][1]
+    return response
+
+def handle_screening_answer(user_id, answer):
+    """Handle a screening answer"""
+    if user_id not in screening_sessions or screening_sessions[user_id] is None:
+        return None
+    
+    session = screening_sessions[user_id]
+    if answer == "/skip":
+        session["answers"].append(False)
+    else:
+        q_type = session.get("current_question", "unknown")
+        if q_type == "orientation":
+            days = ["一", "二", "三", "四", "五", "六", "日", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            session["answers"].append(any(day in answer for day in days))
+        elif q_type == "memory" or q_type == "recall":
+            key_words = ["蘋果", "巴士", "紅色", "apple", "bus", "red"]
+            session["answers"].append(any(kw in answer for kw in key_words))
+        elif q_type == "calculation":
+            numbers = re.findall(r'\d+', answer)
+            session["answers"].append(bool(numbers) and any(int(n) == 93 for n in numbers))
+        else:
+            session["answers"].append(True)
+    
+    session["step"] += 1
+    return ask_screening_questions(user_id)
+
+# ============================================================
+# INFORMED CONSENT
+# ============================================================
+
+def get_consent_status(user_id):
+    """Check if user has given consent"""
+    if not caregiver_memory:
+        return True  # No consent system available
+    return caregiver_memory.get_memory(user_id, "consent_given", False)
+
+def get_consent_response(user_message, user_id):
+    """Handle consent flow"""
+    if user_message.startswith("/consent_yes"):
+        if caregiver_memory:
+            caregiver_memory.set_memory(user_id, "consent_given", True)
+            caregiver_memory.set_memory(user_id, "share_with_caregiver", True)
+        return "✅ 感謝你！我會與你的看護者分享重要資訊。"
+    
+    if user_message.startswith("/consent_no"):
+        if caregiver_memory:
+            caregiver_memory.set_memory(user_id, "consent_given", True)
+            caregiver_memory.set_memory(user_id, "share_with_caregiver", False)
+        return "✅ 明白了。你的資料會保持私隱。"
+    
+    return None  # No consent response yet
+
+# ============================================================
+# GET USER ID
 # ============================================================
 
 def get_user_id(message=None):
     """Get user ID (for now, use default)"""
-    # In production, extract from Telegram user ID
     return "default_user"
+
+# ============================================================
+# MAIN process_message FUNCTION
+# ============================================================
 
 def process_message(user_message: str) -> str:
     """Main entry point for processing user messages."""
     
-    # Get user ID
     user_id = get_user_id()
     
     # ============================================================
-    # CAREGIVER COMMANDS
+    # 1. INFORMED CONSENT (First-time users)
     # ============================================================
-    
+    if not get_consent_status(user_id):
+        consent_response = get_consent_response(user_message, user_id)
+        if consent_response:
+            if metrics_collector:
+                metrics_collector.record_interaction(user_id, "consent", consent_response)
+            return consent_response
+        
+        return """👋 你好！我是小安，一個認知健康助理。
+
+在開始之前，請告訴我：
+/consent_yes → 我同意與看護者分享資料
+/consent_no  → 我不希望分享資料
+
+你的選擇會影響我能提供的幫助。"""
+
+    # ============================================================
+    # 2. CAREGIVER COMMANDS
+    # ============================================================
     if caregiver_memory:
         if user_message.startswith("/setname"):
             name = user_message.replace("/setname", "").strip()
             if name:
                 caregiver_memory.set_memory(user_id, "name", name)
                 response = f"✅ 已記住你的名字：{name}"
-                
-                # Record interaction
                 if metrics_collector:
                     metrics_collector.record_interaction(user_id, "caregiver_command", response)
                 return response
@@ -311,18 +472,43 @@ def process_message(user_message: str) -> str:
             if profile:
                 response = "📋 你的個人檔案：\n"
                 for key, value in profile.items():
-                    if key != "last_updated":
+                    if key != "last_updated" and key != "detected_patterns":
                         response += f"  {key}: {value}\n"
-                if metrics_collector:
-                    metrics_collector.record_interaction(user_id, "caregiver_command", response)
                 return response
-            response = "📋 暫時沒有個人檔案。你可以用以下指令設定：\n/setname 名字\n/addroutine 日常安排\n/addpref 喜好\n/calm 安撫語句"
-            if metrics_collector:
-                metrics_collector.record_interaction(user_id, "caregiver_command", response)
-            return response
-    
+            return "📋 暫時沒有個人檔案。"
+
     # ============================================================
-    # Step 1: Detect intent
+    # 3. SCREENING FLOW
+    # ============================================================
+    if user_message.startswith("/screen"):
+        response = ask_screening_questions(user_id)
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, "screening_start", response)
+        return response
+    
+    # Handle screening answers
+    if user_id in screening_sessions and screening_sessions[user_id] is not None:
+        if user_message.startswith("/exit"):
+            screening_sessions[user_id] = None
+            return "📋 篩查已結束。有其他問題隨時可以問我！"
+        
+        response = handle_screening_answer(user_id, user_message)
+        if response:
+            if metrics_collector:
+                metrics_collector.record_interaction(user_id, "screening_answer", response)
+            return response
+
+    # ============================================================
+    # 4. DETECT PATTERNS
+    # ============================================================
+    detect_response = detect_patterns(user_id, user_message)
+    if detect_response:
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, "detection", detect_response)
+        return detect_response
+
+    # ============================================================
+    # 5. INTENT RECOGNITION
     # ============================================================
     intent = intent_recognizer.detect_intent(user_message)
     intent_desc = intent_recognizer.get_intent_description(intent) if hasattr(intent_recognizer, 'get_intent_description') else intent
@@ -330,9 +516,17 @@ def process_message(user_message: str) -> str:
     print(f"\n[PROCESS] Message: {user_message[:50]}...")
     print(f"[PROCESS] Intent: {intent_desc}")
     
+    # Detect user profile
+    if USER_PROFILES_AVAILABLE:
+        profile_id, profile = detect_user_profile(user_message)
+        if profile_id:
+            print(f"[PROFILE] Detected: {profile['name']} ({profile['type']})")
+
     # ============================================================
-    # Step 2: Handle SAFETY_SENSITIVE
+    # 6. ROUTE BY INTENT
     # ============================================================
+    
+    # Safety
     if intent == "safety_sensitive":
         if safety_handler.is_health_complaint(user_message):
             response = safety_handler.handle_dizziness(user_message)
@@ -340,61 +534,40 @@ def process_message(user_message: str) -> str:
             response = safety_handler.handle_safety_sensitive(user_message)
         
         debug_logger.log_interaction(
-            user_message=user_message,
-            intent=intent,
-            chunks=[],
-            sources=[],
-            safety_level="ESCALATE",
-            response=response,
-            found=False,
+            user_message=user_message, intent=intent, chunks=[], sources=[],
+            safety_level="ESCALATE", response=response, found=False,
             fallback_reason="Safety escalation triggered"
         )
         if metrics_collector:
             metrics_collector.record_interaction(user_id, intent, response)
         return response
     
-    # ============================================================
-    # Step 3: Handle MEDICATION_OR_DIAGNOSIS
-    # ============================================================
+    # Medication
     if intent == "medication_or_diagnosis":
         response = safety_handler.handle_medication_or_diagnosis(user_message)
         
         debug_logger.log_interaction(
-            user_message=user_message,
-            intent=intent,
-            chunks=[],
-            sources=[],
-            safety_level="FAIL",
-            response=response,
-            found=False,
+            user_message=user_message, intent=intent, chunks=[], sources=[],
+            safety_level="FAIL", response=response, found=False,
             fallback_reason="Medication/diagnosis question refused"
         )
         if metrics_collector:
             metrics_collector.record_interaction(user_id, intent, response)
         return response
     
-    # ============================================================
-    # Step 4: Handle REMINDER_REQUEST
-    # ============================================================
+    # Reminder
     if intent == "reminder_request":
         response = "📋 好的！我已經記住了。請告訴我你想設定什麼提醒？"
         
         debug_logger.log_interaction(
-            user_message=user_message,
-            intent=intent,
-            chunks=[],
-            sources=[],
-            safety_level="PASS",
-            response=response,
-            found=True
+            user_message=user_message, intent=intent, chunks=[], sources=[],
+            safety_level="PASS", response=response, found=True
         )
         if metrics_collector:
             metrics_collector.record_interaction(user_id, intent, response)
         return response
     
-    # ============================================================
-    # Step 5: Handle COGNITIVE_ACTIVITY
-    # ============================================================
+    # Cognitive Activity
     if intent == "cognitive_activity":
         response = """🧠 好的！我們來做一個簡單的記憶練習。
 
@@ -405,28 +578,19 @@ def process_message(user_message: str) -> str:
 
 1分鐘後我會問你記不記得。準備好了嗎？"""
         
-        # Record activity participation
         if metrics_collector:
             metrics_collector.record_activity_participation(user_id, "memory_exercise", True)
         
         debug_logger.log_interaction(
-            user_message=user_message,
-            intent=intent,
-            chunks=[],
-            sources=[],
-            safety_level="PASS",
-            response=response,
-            found=True
+            user_message=user_message, intent=intent, chunks=[], sources=[],
+            safety_level="PASS", response=response, found=True
         )
         if metrics_collector:
             metrics_collector.record_interaction(user_id, intent, response)
         return response
     
-    # ============================================================
-    # Step 6: Handle EMOTIONAL_SUPPORT (WITH CAREGIVER MEMORY!)
-    # ============================================================
+    # Emotional Support
     if intent == "emotional_support":
-        # Get name and calming phrase from caregiver memory
         name = "朋友"
         calming_phrase = None
         
@@ -434,8 +598,7 @@ def process_message(user_message: str) -> str:
             name = caregiver_memory.get_name(user_id) or "朋友"
             calming_phrase = caregiver_memory.get_calming_phrase(user_id)
         
-        # Extract mood from message or use default
-        mood_score = 3  # Default neutral
+        mood_score = 3
         if "開心" in user_message or "好" in user_message:
             mood_score = 4
         elif "唔開心" in user_message or "不好" in user_message or "難過" in user_message:
@@ -466,54 +629,41 @@ def process_message(user_message: str) -> str:
 
 小安會一直在這裡陪伴你。"""
         
-        # Record mood metric
         if metrics_collector:
             metrics_collector.record_mood(user_id, mood_score)
             metrics_collector.record_interaction(user_id, intent, response)
         
         debug_logger.log_interaction(
-            user_message=user_message,
-            intent=intent,
-            chunks=[],
-            sources=[],
-            safety_level="PASS",
-            response=response,
-            found=True
+            user_message=user_message, intent=intent, chunks=[], sources=[],
+            safety_level="PASS", response=response, found=True
         )
         return response
     
-    # ============================================================
-    # Step 7: Handle KNOWLEDGE_QA (HYBRID SEARCH)
-    # ============================================================
+    # Knowledge QA (Hybrid RAG)
     if intent == "knowledge_qa":
         result = hybrid_search(user_message)
         
         if not result:
             response = "小安暫時沒有這個資訊。請向照顧者或專業人士查詢。"
             found = False
-            fallback_reason = "No information found in knowledge base"
+            fallback_reason = "No information found"
         else:
             response = result
             found = True
             fallback_reason = None
         
         debug_logger.log_interaction(
-            user_message=user_message,
-            intent=intent,
+            user_message=user_message, intent=intent,
             chunks=["Found relevant content"] if found else [],
             sources=["knowledge files"] if found else [],
-            safety_level="PASS",
-            response=response,
-            found=found,
+            safety_level="PASS", response=response, found=found,
             fallback_reason=fallback_reason
         )
         if metrics_collector:
             metrics_collector.record_interaction(user_id, intent, response)
         return response
     
-    # ============================================================
-    # Step 8: Handle PERSONAL_MEMORY (WITH CAREGIVER MEMORY!)
-    # ============================================================
+    # Personal Memory
     if intent == "personal_memory":
         name = "朋友"
         if caregiver_memory:
@@ -536,51 +686,48 @@ def process_message(user_message: str) -> str:
 /profile 查看檔案"""
         
         debug_logger.log_interaction(
-            user_message=user_message,
-            intent=intent,
-            chunks=[],
-            sources=[],
-            safety_level="PASS",
-            response=response,
-            found=True
+            user_message=user_message, intent=intent, chunks=[], sources=[],
+            safety_level="PASS", response=response, found=True
         )
         if metrics_collector:
             metrics_collector.record_interaction(user_id, intent, response)
         return response
     
-    # ============================================================
-    # Step 9: Handle UNKNOWN
-    # ============================================================
+    # Unknown
     response = "😊 小安不太明白你的意思。你可以問我關於腦退化症的問題、藥物資訊、或者告訴我你想做記憶練習。"
     
     debug_logger.log_interaction(
-        user_message=user_message,
-        intent=intent,
-        chunks=[],
-        sources=[],
-        safety_level="PASS",
-        response=response,
-        found=False,
+        user_message=user_message, intent=intent, chunks=[], sources=[],
+        safety_level="PASS", response=response, found=False,
         fallback_reason="Unknown intent"
     )
     if metrics_collector:
         metrics_collector.record_interaction(user_id, intent, response)
     return response
 
-
 # ============================================================
-# Test function
+# TEST FUNCTION
 # ============================================================
 
 def test_knowledge_tool():
     """Test the integrated knowledge tool."""
     print("\n" + "=" * 70)
-    print("🧪 Testing YOUR Hybrid RAG (Semantic + Keyword)")
+    print("🧪 Testing Complete Xiao An Chatbot")
     print("=" * 70)
-    print(f"📁 Components available: {COMPONENTS_AVAILABLE}")
-    print(f"📁 Semantic search available: {SEMANTIC_AVAILABLE}")
-    print(f"📁 Caregiver memory available: {CAREGIVER_MEMORY_AVAILABLE}")
-    print(f"📁 Metrics available: {METRICS_AVAILABLE}")
+    
+    # ============================================================
+    # ✅ ADD THIS: Auto-consent for testing
+    # ============================================================
+    if CAREGIVER_MEMORY_AVAILABLE:
+        caregiver_memory.set_memory("default_user", "consent_given", True)
+        caregiver_memory.set_memory("default_user", "share_with_caregiver", True)
+        print("📝 Auto-consent enabled for testing")
+    
+    print(f"📁 Core components: {'✅' if COMPONENTS_AVAILABLE else '❌'}")
+    print(f"📁 Caregiver Memory: {'✅' if CAREGIVER_MEMORY_AVAILABLE else '❌'}")
+    print(f"📁 User Profiles: {'✅' if USER_PROFILES_AVAILABLE else '❌'}")
+    print(f"📁 Semantic Search: {'✅' if SEMANTIC_AVAILABLE else '❌'}")
+    print(f"📁 Metrics: {'✅' if METRICS_AVAILABLE else '❌'}")
     print("-" * 70)
     
     test_messages = [
@@ -591,21 +738,26 @@ def test_knowledge_tool():
         "我想做記憶練習",
         "我覺得好孤單",
         "我喜歡吃蘋果",
-        "今天天氣如何？"
+        "今天天氣如何？",
+        "我最近常常忘記事情",  # Should detect pattern
+        "/screen",              # Should start screening
+        "我今天心情不好",       # Should detect mood
     ]
     
     print("\n📝 Processing test messages:\n")
     
     for i, msg in enumerate(test_messages, 1):
         print(f"\n{i}. 👤 用戶: {msg}")
-        response = process_message(msg)
-        print(f"   🤖 小安: {response[:100]}..." if len(response) > 100 else f"   🤖 小安: {response}")
+        try:
+            response = process_message(msg)
+            print(f"   🤖 小安: {response[:150]}..." if len(response) > 150 else f"   🤖 小安: {response}")
+        except Exception as e:
+            print(f"   ❌ ERROR: {e}")
         print("   " + "-" * 40)
     
     print("\n" + "=" * 70)
     print("✅ Test complete!")
     print("=" * 70)
-
 
 if __name__ == "__main__":
     test_knowledge_tool()
