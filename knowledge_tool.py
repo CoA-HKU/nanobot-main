@@ -389,21 +389,42 @@ def get_consent_response(user_message, user_id):
     return None  # No consent response yet
 
 # ============================================================
-# GET USER ID
+# ★★★ FIX: GET USER ID (Telegram + WeChat Support) ★★★
 # ============================================================
 
 def get_user_id(message=None):
-    """Get user ID (for now, use default)"""
+    """
+    Get user ID from message context.
+    Supports Telegram, WeChat, and fallback for testing.
+    """
+    # For Telegram messages (python-telegram-bot)
+    if hasattr(message, 'from_user') and message.from_user:
+        return str(message.from_user.id)
+    
+    # For WeChat messages (Weixin channel)
+    if hasattr(message, 'chat_id'):
+        return str(message.chat_id)
+    
+    # For Weixin specific (o9cq... format)
+    if hasattr(message, 'sender') and hasattr(message.sender, 'id'):
+        return str(message.sender.id)
+    
+    # Fallback for testing
     return "default_user"
 
 # ============================================================
 # MAIN process_message FUNCTION
 # ============================================================
 
-def process_message(user_message: str) -> str:
-    """Main entry point for processing user messages."""
+def process_message(user_message: str, message_context=None) -> str:
+    """
+    Main entry point for processing user messages.
+    Args:
+        user_message: The user's message text
+        message_context: Optional message object for extracting user ID
+    """
     
-    user_id = get_user_id()
+    user_id = get_user_id(message_context)
     
     # ============================================================
     # 1. INFORMED CONSENT (First-time users)
@@ -424,7 +445,16 @@ def process_message(user_message: str) -> str:
 你的選擇會影響我能提供的幫助。"""
 
     # ============================================================
-    # 2. CAREGIVER COMMANDS
+    # 2. SCREENING COMMAND (FIXED!)
+    # ============================================================
+    if user_message.startswith("/screen") or user_message.startswith("/screening"):
+        response = ask_screening_questions(user_id)
+        if metrics_collector:
+            metrics_collector.record_interaction(user_id, "screening_start", response)
+        return response
+
+    # ============================================================
+    # 3. CAREGIVER COMMANDS
     # ============================================================
     if caregiver_memory:
         if user_message.startswith("/setname"):
@@ -478,15 +508,8 @@ def process_message(user_message: str) -> str:
             return "📋 暫時沒有個人檔案。"
 
     # ============================================================
-    # 3. SCREENING FLOW
+    # 4. SCREENING FLOW
     # ============================================================
-    if user_message.startswith("/screen"):
-        response = ask_screening_questions(user_id)
-        if metrics_collector:
-            metrics_collector.record_interaction(user_id, "screening_start", response)
-        return response
-    
-    # Handle screening answers
     if user_id in screening_sessions and screening_sessions[user_id] is not None:
         if user_message.startswith("/exit"):
             screening_sessions[user_id] = None
@@ -499,7 +522,7 @@ def process_message(user_message: str) -> str:
             return response
 
     # ============================================================
-    # 4. DETECT PATTERNS
+    # 5. DETECT PATTERNS
     # ============================================================
     detect_response = detect_patterns(user_id, user_message)
     if detect_response:
@@ -508,7 +531,7 @@ def process_message(user_message: str) -> str:
         return detect_response
 
     # ============================================================
-    # 5. INTENT RECOGNITION
+    # 6. INTENT RECOGNITION
     # ============================================================
     intent = intent_recognizer.detect_intent(user_message)
     intent_desc = intent_recognizer.get_intent_description(intent) if hasattr(intent_recognizer, 'get_intent_description') else intent
@@ -523,7 +546,7 @@ def process_message(user_message: str) -> str:
             print(f"[PROFILE] Detected: {profile['name']} ({profile['type']})")
 
     # ============================================================
-    # 6. ROUTE BY INTENT
+    # 7. ROUTE BY INTENT
     # ============================================================
     
     # Safety
@@ -715,9 +738,7 @@ def test_knowledge_tool():
     print("🧪 Testing Complete Xiao An Chatbot")
     print("=" * 70)
     
-    # ============================================================
-    # ✅ ADD THIS: Auto-consent for testing
-    # ============================================================
+    # Auto-consent for testing
     if CAREGIVER_MEMORY_AVAILABLE:
         caregiver_memory.set_memory("default_user", "consent_given", True)
         caregiver_memory.set_memory("default_user", "share_with_caregiver", True)
@@ -739,9 +760,9 @@ def test_knowledge_tool():
         "我覺得好孤單",
         "我喜歡吃蘋果",
         "今天天氣如何？",
-        "我最近常常忘記事情",  # Should detect pattern
-        "/screen",              # Should start screening
-        "我今天心情不好",       # Should detect mood
+        "我最近常常忘記事情",
+        "/screen",
+        "我今天心情不好",
     ]
     
     print("\n📝 Processing test messages:\n")
