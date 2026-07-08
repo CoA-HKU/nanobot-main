@@ -1,12 +1,10 @@
 # 小安 (Xiao An) — MCI Chatbot Project
 
-**A Source-Grounded, Caregiver-Aware Engagement Companion for Chinese Older Adults with MCI or Early Dementia**
-
 | **Project Information** | |
 |------------------------|---|
 | **Project Name** | 小安 (Xiao An) |
-| **Version** | 0.2.0 |
-| **Last Updated** | 2026-07-06 |
+| **Version** | 0.3.0 |
+| **Last Updated** | 2026-07-08 |
 | **Status** | Active Development |
 | **Target Users** | Chinese older adults with MCI/early dementia, caregivers |
 | **Primary Platform** | Telegram |
@@ -17,7 +15,7 @@
 
 ---
 
-## What This Project Does
+## Executive Summary
 
 小安 (Xiao An) is a **source-grounded, caregiver-aware engagement companion** designed for Chinese older adults with Mild Cognitive Impairment (MCI) or early dementia. Unlike generic chatbots, 小安:
 
@@ -38,75 +36,31 @@
 | Caregiver dashboard | 7/3/2026 | ✅ Done |
 | Reminder system | 7/3/2026 | ✅ Done |
 | Active engagement features | 7/4/2026 | ✅ Done |
-| Hybrid RAG (team integration) | ⏳ In Progress | 30% |
+| Hybrid RAG | 7/6/2026 | ✅ Done |
+| Caregiver Memory | 7/7/2026 | ✅ Done |
+| RAG Server (Standalone) | 7/7/2026 | ✅ Done |
+| Nanobot Bridge (Auto-Discovery) | 7/7/2026 | ✅ Done |
 
 ---
 
-## Project Overview
-
-
-### Core Principles
-
-| Principle | Description |
-|-----------|-------------|
-| **Source-Grounded** | Every answer comes from curated knowledge sources, not LLM hallucination |
-| **Caregiver-Aware** | Supports caregivers with tools for monitoring and personalization |
-| **Gentle Engagement** | Provides activities and check-ins without being patronizing |
-| **Safety-First** | Explicitly refuses diagnosis, medication advice, and treatment decisions |
-| **Privacy-First** | Private data stays local; never sent to corporate LLM training |
-
-### What This Bot Is NOT
-
-| ❌ Not This | ✅ Instead |
-|------------|------------|
-| Medical diagnostic tool | Information resource |
-| Treatment recommendation system | Safe boundary with escalation |
-| Crisis intervention service | Caregiver/emergency escalation |
-| Mental health therapy | Emotional support companion |
-| Replacement for professional care | Complement to professional care |
-
----
-
-## Project Structure
-
-### Key Files Description
-
-| File | Purpose | Owner |
-|------|---------|-------|
-| `knowledge_tool.py` | Main entry: intent → safety → RAG → response | You |
-| `intent_recognizer.py` | Classifies messages into 8 intents | You |
-| `safety_handler.py` | Handles medication/diagnosis/safety | You |
-| `debug_logger.py` | Logs all interactions for debugging | You |
-| `telegram_reminder.py` | Scheduled reminders (5x daily) | You |
-| `dashboard.py` | Streamlit caregiver monitoring | You |
-| `orchestrator.py` | Hybrid RAG orchestrator | Teammate |
-| `medicine_normalizer.py` | Medicine alias mapping | Teammate |
-
----
-
-## Current Status
-
-### Overall Progress
+## Overall Progress
 
 | Phase | Status | % Complete |
 |-------|--------|------------|
 | Phase 1: Setup & Integration | ✅ Done | 100% |
 | Phase 2: Intent Recognizer | ✅ Done | 100% |
 | Phase 3: Safety Boundaries | ✅ Done | 100% |
-| Phase 4: Hybrid RAG | ⏳ In Progress | 30% |
+| Phase 4: Hybrid RAG | ✅ Done | 100% |
 | Phase 5: Evidence Checking | ✅ Done | 100% |
 | Phase 6: Active Engagement | ✅ Done | 100% |
-| Phase 7: Caregiver Memory | ❌ Not Started | 0% |
-| Phase 8: Evaluation Benchmark | ❌ Not Started | 0% |
-| Phase 9: User Testing | ❌ Not Started | 0% |
-| Cloud Deployment | ❌ Not Started | 0% |
-
+| Phase 7: Caregiver Memory | ✅ Done | 100% |
+| Phase 8: Evaluation Benchmark | ⏳ In Progress | 0% |
+| Phase 9: User Testing | ⏳ Not Started | 0% |
+| Cloud Deployment | ⏳ Not Started | 0% |
 
 ---
 
-## 6. Features Implemented
-
-### ✅ Your Features (Complete)
+## Features Implemented
 
 | Feature | Description | Status |
 |---------|-------------|--------|
@@ -123,51 +77,188 @@
 | **Emotional Support** | Empathetic responses | ✅ |
 | **Sleep/Wellness Nudges** | Morning/evening check-ins | ✅ |
 | **Source Display** | Shows where answers come from | ✅ |
+| **Caregiver Memory** | Personalization via `/setname`, `/addpref`, `/addroutine`, `/calm`, `/profile` | ✅ |
+| **Hybrid RAG** | Semantic + keyword retrieval with confidence scores | ✅ |
+| **Semantic Search** | Meaning-based retrieval using sentence-transformers | ✅ |
+| **RAG Server** | Standalone Flask API server on port 5001 | ✅ |
+| **CLI Tool** | `rag_cli.py` for testing without Telegram | ✅ |
+| **Automated Web Scraping** | `web_ingest.py` with configurable crawling | ✅ |
+| **Evidence Sufficiency** | Check if chunks support the answer | ✅ |
 
-
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Hybrid RAG** | Semantic + keyword retrieval | ⏳ In Progress |
-| **Chroma DB** | Vector database for embeddings | ⏳ In Progress |
-| **Semantic Search** | Meaning-based retrieval | ⏳ In Progress |
 
 ---
-## 7. Data flow
+
+## Data Flow
+
+```
 1. User Message (Telegram/WeChat/WebUI)
     ↓
-2. Intent Recognition
+2. Intent Recognition (YOUR WORK)
     - Classifies into 8 intents
     - Priority: Safety > Medication > Knowledge > Others
     ↓
-3. Safety & Medical Boundary
+3. Safety & Medical Boundary (YOUR WORK)
     - Medication questions → Refusal with doctor/caregiver guidance
     - Diagnosis questions → Refusal with guidance
     - Health complaints → Escalation with caregiver/emergency guidance
     - Emergency → Escalate to caregiver or emergency services
     ↓
-4. Module Routing 
+4. Module Routing (YOUR WORK)
     - Knowledge QA → Hybrid RAG (TEAMMATE'S WORK)
     - Reminder → Scheduler (YOUR WORK)
     - Activity → Activity Generator (YOUR WORK)
     - Emotional → Support Response (YOUR WORK)
-    - Personal Memory → Memory Store (FUTURE)
+    - Personal Memory → Memory Store (YOUR WORK)
     - Unknown → Graceful Fallback (YOUR WORK)
     ↓
-5. RAG Pipeline 
+5. RAG Pipeline (TEAMMATE'S WORK)
     - Hybrid Search: Semantic + Keyword (BM25)
     - Chroma DB vector retrieval
     - Evidence sufficiency check (YOUR WORK)
     - Response generation
     ↓
-6. Debug Logging 
+6. Debug Logging (YOUR WORK)
     - Log: intent, chunks, sources, safety level, response
     - JSON + text logs
     ↓
-7. Response to User 
+7. Response to User (YOUR WORK)
     - Traditional Chinese
     - 3-6 sentences
     - Source display
+```
 
+---
+
+## Intent Categories
+
+| Intent | Description | Example |
+|--------|-------------|---------|
+| `knowledge_qa` | Dementia/MCI knowledge | "什麼是腦退化症？" |
+| `personal_memory` | Caregiver-personal info | "我喜歡吃什麼？" |
+| `reminder_request` | Setting/checking reminders | "提醒我9點吃藥" |
+| `cognitive_activity` | Memory exercises | "我想做記憶練習" |
+| `emotional_support` | Emotional needs | "我覺得好孤單" |
+| `safety_sensitive` | Emergency/danger | "我頭暈得好犀利" |
+| `medication_or_diagnosis` | Medical advice | "我應該吃多少藥？" |
+| `unknown` | Everything else | "今天天氣好嗎？" |
+
+---
+
+
+## Development Phases
+
+### Phase 1: Stabilize Current System (✅ Done)
+- CLI and Telegram use same answer function
+- Debug logs for intent, chunks, sources, safety
+- Every answer returns: answer, sources, found, intent, safety, debug info
+
+### Phase 2: Validate Intent Recognizer (✅ Done)
+- 8 intent categories
+- Unit tests for each intent
+- Priority rules: safety and medication override QA
+- Test with Traditional Chinese, Cantonese, mixed Chinese/English
+
+### Phase 3: Safety and Medical Boundaries (✅ Done)
+- Separate handlers for safety_sensitive and medication_or_diagnosis
+- Medication questions do NOT go through RAG
+- Emergency situations trigger caregiver or emergency escalation
+
+### Phase 4: Improve Retrieval with Hybrid RAG (✅ Done)
+- Add semantic search (sentence-transformers)
+- Add BM25 keyword search
+- Merge and deduplicate results
+- Reranking for relevance
+
+### Phase 5: Evidence Sufficiency Checking (✅ Done)
+- Check if retrieved chunks support the answer
+- Return sufficient/insufficient, reason, risk type
+- Fallback: "I can't find enough information"
+
+### Phase 6: Active Engagement (✅ Done)
+- Simple check-ins
+- Reminiscence prompts
+- Gentle conversation
+- Orientation support
+- Simple activity suggestions (category naming, word association)
+- Daily reflection
+- Caregiver-authored routines
+
+### Phase 7: Caregiver Memory (✅ Done)
+- Separate knowledge stores:
+  - Dementia knowledge base (public, curated)
+  - Personal memory base (caregiver-authored)
+- Caregiver-authored: routines, preferences, names, reminders, calming phrases
+- Commands: `/setname`, `/addroutine`, `/addpref`, `/calm`, `/profile`
+
+### Phase 8: Evaluation Benchmark (⏳ In Progress)
+- 30-50 question benchmark across categories
+- Metrics: intent accuracy, retrieval accuracy, safety compliance, hallucination rate
+
+### Phase 9: User & Expert Studies (❌ Planned)
+- Pre-design interviews with PwD/caregivers
+- Post-use interviews
+- Expert review (clinicians, dementia researchers, care workers)
+- CHI-style publication
+
+---
+
+
+## RAG Research Papers
+- A-RAG: Scaling Agentic Retrieval-Augmented Generation via Hierarchical Retrieval Interfaces (arXiv:2605.03534)
+- Awesome RAG: https://github.com/Danielskry/Awesome-RAG
+
+## Non-Research Resources
+- Should You Be Using RAG in 2026? (dev.to/riddhesh)
+- RAG Types (turingpost.com/p/ragtypes)
+- RAG Is Dead — And Why That's the Best News (medium.com)
+
+## Knowledge Sources
+- JCCPA (耆智園): https://www.jccpa.org.hk/
+- HA Smart Patient (智友站): https://www.smartpatient.ha.org.hk/
+- HA CPH (精神健康): https://www3.ha.org.hk/cph/imh/
+- Elderly.gov.hk: https://www.elderly.gov.hk/
+- Alzheimer's International: https://www.alzint.org/
+- World Alzheimer Reports (2023-2025)
+- WHO Risk Dementia Report
+
+
+---
+
+## Commands
+
+```powershell
+# Start bot
+cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
+.\start_bot.cmd
+
+# Start RAG server (standalone)
+cd C:\Users\user\.nanobot
+py -3.14 rag_server.py
+
+# Test RAG via CLI
+py -3.14 rag_cli.py "什麼是腦退化症？"
+
+# Test knowledge_tool
+py -3.14 knowledge_tool.py
+
+# Launch dashboard
+py -3.14 -m streamlit run dashboard.py
+
+# View logs
+type C:\Users\user\.nanobot\logs\bot_debug.log
+```
+
+### Caregiver Commands on Telegram
+
+| Command | Description |
+|---------|-------------|
+| `/setname 陳婆婆` | Sets patient name |
+| `/addroutine 9:00 吃藥` | Adds daily routine |
+| `/addpref 喜歡聽粵曲` | Adds preference |
+| `/calm 一切安好` | Adds calming phrase |
+| `/profile` | Shows all stored info |
+
+
+*Last Updated: 2026-07-08*
 
     
