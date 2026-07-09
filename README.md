@@ -64,11 +64,6 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 | **Evidence Sufficiency** | Check if chunks support the answer | ✅ |
 
 
-
-```
-
----
-
 ## Intent Categories
 
 | Intent | Description | Example |
@@ -81,8 +76,6 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 | `safety_sensitive` | Emergency/danger | "我頭暈得好犀利" |
 | `medication_or_diagnosis` | Medical advice | "我應該吃多少藥？" |
 | `unknown` | Everything else | "今天天氣好嗎？" |
-
----
 
 
 ## Development Phases
@@ -140,29 +133,6 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 - Expert review (clinicians, dementia researchers, care workers)
 - CHI-style publication
 
----
-
-
-## RAG Research Papers
-- A-RAG: Scaling Agentic Retrieval-Augmented Generation via Hierarchical Retrieval Interfaces (arXiv:2605.03534)
-- Awesome RAG: https://github.com/Danielskry/Awesome-RAG
-
-## Non-Research Resources
-- Should You Be Using RAG in 2026? (dev.to/riddhesh)
-- RAG Types (turingpost.com/p/ragtypes)
-- RAG Is Dead — And Why That's the Best News (medium.com)
-
-## Knowledge Sources
-- JCCPA (耆智園): https://www.jccpa.org.hk/
-- HA Smart Patient (智友站): https://www.smartpatient.ha.org.hk/
-- HA CPH (精神健康): https://www3.ha.org.hk/cph/imh/
-- Elderly.gov.hk: https://www.elderly.gov.hk/
-- Alzheimer's International: https://www.alzint.org/
-- World Alzheimer Reports (2023-2025)
-- WHO Risk Dementia Report
-
-
----
 
 # View logs
 type C:\Users\user\.nanobot\logs\bot_debug.log
