@@ -64,11 +64,6 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 | **Evidence Sufficiency** | Check if chunks support the answer | ✅ |
 
 
-
-```
-
----
-
 ## Intent Categories
 
 | Intent | Description | Example |
