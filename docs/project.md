@@ -1,9 +1,11 @@
 # 小安 (Xiao An) — MCI Chatbot Project
 
+```bash
 cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main 
 .\start_all.cmd
+```
 
-### Key Achievements
+## Key Achievements
 
 | Milestone | Date | Status |
 |-----------|------|--------|
@@ -63,6 +65,7 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 | **Automated Web Scraping** | `web_ingest.py` with configurable crawling | ✅ |
 | **Evidence Sufficiency** | Check if chunks support the answer | ✅ |
 
+---
 
 ## Intent Categories
 
@@ -79,37 +82,42 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 
 ---
 
-
 ## Development Phases
 
 ### Phase 1: Stabilize Current System (✅ Done)
+
 - CLI and Telegram use same answer function
 - Debug logs for intent, chunks, sources, safety
 - Every answer returns: answer, sources, found, intent, safety, debug info
 
 ### Phase 2: Validate Intent Recognizer (✅ Done)
+
 - 8 intent categories
 - Unit tests for each intent
 - Priority rules: safety and medication override QA
 - Test with Traditional Chinese, Cantonese, mixed Chinese/English
 
 ### Phase 3: Safety and Medical Boundaries (✅ Done)
+
 - Separate handlers for safety_sensitive and medication_or_diagnosis
 - Medication questions do NOT go through RAG
 - Emergency situations trigger caregiver or emergency escalation
 
 ### Phase 4: Improve Retrieval with Hybrid RAG (✅ Done)
+
 - Add semantic search (sentence-transformers)
 - Add BM25 keyword search
 - Merge and deduplicate results
 - Reranking for relevance
 
 ### Phase 5: Evidence Sufficiency Checking (✅ Done)
+
 - Check if retrieved chunks support the answer
 - Return sufficient/insufficient, reason, risk type
 - Fallback: "I can't find enough information"
 
 ### Phase 6: Active Engagement (✅ Done)
+
 - Simple check-ins
 - Reminiscence prompts
 - Gentle conversation
@@ -119,6 +127,7 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 - Caregiver-authored routines
 
 ### Phase 7: Caregiver Memory (✅ Done)
+
 - Separate knowledge stores:
   - Dementia knowledge base (public, curated)
   - Personal memory base (caregiver-authored)
@@ -126,10 +135,12 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 - Commands: `/setname`, `/addroutine`, `/addpref`, `/calm`, `/profile`
 
 ### Phase 8: Evaluation Benchmark (⏳ In Progress)
+
 - 30-50 question benchmark across categories
 - Metrics: intent accuracy, retrieval accuracy, safety compliance, hallucination rate
 
 ### Phase 9: User & Expert Studies (❌ Planned)
+
 - Pre-design interviews with PwD/caregivers
 - Post-use interviews
 - Expert review (clinicians, dementia researchers, care workers)
@@ -137,33 +148,38 @@ cd C:\Users\user\Desktop\nanobot-main-main5\nanobot-main
 
 ---
 
-
 ## RAG Research Papers
+
 - A-RAG: Scaling Agentic Retrieval-Augmented Generation via Hierarchical Retrieval Interfaces (arXiv:2605.03534)
 - Awesome RAG: https://github.com/Danielskry/Awesome-RAG
 
 ## Non-Research Resources
+
 - Should You Be Using RAG in 2026? (dev.to/riddhesh)
 - RAG Types (turingpost.com/p/ragtypes)
 - RAG Is Dead — And Why That's the Best News (medium.com)
 
 ## Knowledge Sources
+
 - JCCPA (耆智園): https://www.jccpa.org.hk/
 - HA Smart Patient (智友站): https://www.smartpatient.ha.org.hk/
-- HA CPH (精神健康): https://www3.ha.org.hk/cph/imh/
+- HA CPH (精神健康): https://www.ha.org.hk/cph/imh/
 - Elderly.gov.hk: https://www.elderly.gov.hk/
 - Alzheimer's International: https://www.alzint.org/
 - World Alzheimer Reports (2023-2025)
 - WHO Risk Dementia Report
 
-
 ---
 
-# View logs
+## View Logs
+
+```bash
 type C:\Users\user\.nanobot\logs\bot_debug.log
 ```
 
-### Caregiver Commands on Telegram
+---
+
+## Caregiver Commands on Telegram
 
 | Command | Description |
 |---------|-------------|
@@ -172,5 +188,3 @@ type C:\Users\user\.nanobot\logs\bot_debug.log
 | `/addpref 喜歡聽粵曲` | Adds preference |
 | `/calm 一切安好` | Adds calming phrase |
 | `/profile` | Shows all stored info |
-
-    
